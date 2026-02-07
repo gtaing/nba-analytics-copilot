@@ -50,6 +50,7 @@ def query_db(sql_query: str) -> str:
         blk_per_game        DOUBLE    — blocks per game
         true_shooting_pct   DOUBLE    — true shooting % (0-1 scale)
         ast_to_tov_ratio    DOUBLE    — assist-to-turnover ratio
+        tov_per_game        DOUBLE    - turnover per game
         stocks_per_game     DOUBLE    — steals + blocks per game
         three_pt_pct        DOUBLE    — three-point shooting percentage (0-1)
         three_pt_made_per_game   DOUBLE — three-pointers made per game

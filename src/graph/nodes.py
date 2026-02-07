@@ -39,12 +39,13 @@ SUPERVISOR_PROMPT = """\
 Classify this NBA analytics question into ONE category.
 Respond with EXACTLY one word — no explanation.
 
-- sql: for rankings, stats, filters, counts, comparisons by name
-  (e.g. "top scorers", "who had the most blocks", "compare LeBron and Curry")
-- semantic: for open-ended or descriptive questions
-  (e.g. "who had the best overall season", "most well-rounded player")
-- both: when the question needs both statistical data AND descriptive context,
-  or when you are unsure
+- sql: for questions that need numerical ranking or filtering
+  (e.g. "best scorers", "best defenders", "who had the most blocks",
+   "top rebounders", "compare LeBron and Curry", "highest shooting percentage")
+  Any question with "best", "top", "most", "highest", "lowest" is sql.
+- semantic: for purely descriptive questions with no ranking
+  (e.g. "describe LeBron's play style", "what kind of player is Curry")
+- both: when unsure, or when the question needs stats AND descriptions
 
 Respond with one word: sql, semantic, or both"""
 
@@ -92,8 +93,27 @@ SQL_AGENT_PROMPT = """\
 You are an NBA SQL analyst. Given a question, write a SQL query to answer it.
 You MUST call the query_db tool with your SQL query. Do NOT answer in text.
 
-If a query errors, read the error and try a corrected query.
-Use single quotes for string values: WHERE player_name = 'LeBron James'"""
+Available table: player_season_features (2016 season only — do NOT filter by year)
+Columns:
+  player_name         VARCHAR  — full name, e.g. 'LeBron James'
+  games_played        BIGINT   — number of games in the season
+  pts_per_game        DOUBLE   — points per game
+  reb_per_game        DOUBLE   — rebounds per game
+  ast_per_game        DOUBLE   — assists per game
+  stl_per_game        DOUBLE   — steals per game (defensive stat)
+  blk_per_game        DOUBLE   — blocks per game (defensive stat)
+  true_shooting_pct   DOUBLE   — true shooting percentage (0-1)
+  ast_to_tov_ratio    DOUBLE   — assist-to-turnover ratio
+  stocks_per_game     DOUBLE   — steals + blocks combined (defensive stat)
+
+Tips:
+- Use stocks_per_game to rank defenders (steals + blocks).
+- Filter games_played >= 50 for meaningful per-game averages.
+- Use single quotes for strings: WHERE player_name = 'LeBron James'
+- Always SELECT the relevant stat columns alongside player_name so the data is useful.
+- For "best" or "top" questions, use ORDER BY ... DESC LIMIT 10.
+
+If a query errors, read the error and try a corrected query."""
 
 
 def create_sql_agent(model_name: str | None = None):
@@ -114,7 +134,8 @@ def create_sql_agent(model_name: str | None = None):
             HumanMessage(content=question),
         ]
 
-        tool_results = []
+        last_result = ""
+        ERROR_PREFIXES = ("SQL error:", "Error:", "Query returned no")
 
         for _ in range(3):
             response = llm.invoke(internal_msgs)
@@ -125,12 +146,16 @@ def create_sql_agent(model_name: str | None = None):
 
             for tc in response.tool_calls:
                 result = query_db.invoke(tc["args"])
-                tool_results.append(result)
+                last_result = result
                 internal_msgs.append(
                     ToolMessage(content=result, tool_call_id=tc["id"])
                 )
 
-        return {"sql_result": "\n".join(tool_results) if tool_results else ""}
+                # Stop retrying on success
+                if not result.startswith(ERROR_PREFIXES):
+                    return {"sql_result": result}
+
+        return {"sql_result": last_result}
 
     return sql_agent
 

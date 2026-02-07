@@ -1,6 +1,6 @@
 # NBA Analytics Copilot
 
-An AI-powered agent that answers natural language questions about NBA statistics using **RAG (Retrieval-Augmented Generation)** and optional local LLMs.
+An AI-powered **multi-agent system** that answers natural language questions about NBA statistics using RAG (Retrieval-Augmented Generation), dynamic SQL generation, and local LLMs — powered by **LangGraph**.
 
 ## Quick Start
 
@@ -11,132 +11,99 @@ uv sync
 # Run the ETL pipeline (first time only)
 python main.py --setup
 
-# Ask a question
+# Ask a question (requires Ollama running locally)
 python main.py "Who were the best defenders in 2016?"
+
+# Verbose mode — see the full agent trace
+python main.py -v "Compare LeBron and Curry"
 ```
 
-## Architecture Overview
+### Prerequisites
+
+- Python 3.13+
+- [Ollama](https://ollama.ai) running locally with a model pulled:
+  ```bash
+  ollama pull llama3.2
+  ```
+
+## Architecture
+
+The system uses a **supervisor pattern** with specialist agents orchestrated by LangGraph:
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        USER QUESTION                            │
-│              "Who was the best defender in 2016?"               │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                          AGENT                                  │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │  1. TOOL SELECTION                                       │   │
-│  │     Question contains "defender" → select defense tools  │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                              │                                  │
-│                              ▼                                  │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │  2. RETRIEVAL (the "R" in RAG)                          │   │
-│  │     • Semantic search: find similar player descriptions  │   │
-│  │     • Structured query: get top defenders by stats       │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                              │                                  │
-│                              ▼                                  │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │  3. GENERATION (the "G" in RAG)                         │   │
-│  │     • LLM synthesizes answer from retrieved context      │   │
-│  │     • Or: structured display of raw data (no LLM mode)   │   │
-│  └─────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                         ANSWER                                  │
-│  "Based on 2016 data, the top defenders by stocks (STL+BLK)    │
-│   were: 1. Hassan Whiteside (4.2), 2. Anthony Davis (3.9)..."  │
-└─────────────────────────────────────────────────────────────────┘
+                          ┌─────────────┐
+                     ┌───▶│  SQL Agent  │───┐
+                     │    └─────────────┘   │
+┌──────────┐    ┌────┴─────┐                │    ┌─────────────┐
+│  User Q  │───▶│ Supervisor│───────────────┼───▶│ Synthesizer │───▶ Answer
+└──────────┘    └────┬─────┘                │    └──────┬──────┘
+                     │    ┌─────────────┐   │           │
+                     └───▶│  RAG Agent  │───┘           │ (low confidence)
+                          └─────────────┘               ▼
+                                                Retry → Supervisor
 ```
 
-## Key Concepts (for GenAI learners)
+### How it works
 
-### 1. RAG (Retrieval-Augmented Generation)
+1. **Supervisor** classifies the question via a lightweight LLM call and routes to specialist agent(s).
+2. **SQL Agent** generates and executes SQL against DuckDB — handles rankings, filters, comparisons. Has an internal retry loop for SQL error correction.
+3. **RAG Agent** runs semantic search with automatic retry/rephrase when similarity scores are low.
+4. **Parallel dispatch** — for complex questions, both agents run simultaneously via LangGraph's `Send` API.
+5. **Synthesizer** merges results from all agents into a coherent answer. If both agents returned errors or empty data, it triggers a feedback loop back to the supervisor for retry.
 
-Instead of asking an LLM to answer from memory (which may be outdated or wrong), RAG:
-1. **Retrieves** relevant data from a knowledge base
-2. **Augments** the LLM prompt with this data
-3. **Generates** an answer grounded in facts
+### Key Concepts
 
-This solves the "hallucination" problem - the LLM can only use data you provide.
-
-### 2. Vector Embeddings
-
-Text is converted to numerical vectors (384 dimensions in our case) that capture semantic meaning:
-- "LeBron is a great scorer" → [0.12, -0.45, 0.89, ...]
-- "James averaged 25 points" → [0.14, -0.42, 0.91, ...] (similar!)
-
-We use `sentence-transformers` to create these embeddings.
-
-### 3. Semantic Search
-
-Find relevant content by comparing vector similarity:
-```
-Question: "best defenders"  →  embedding  →  compare with all player embeddings
-                                                     │
-                                          ┌──────────┴──────────┐
-                                          │ Most similar players │
-                                          └─────────────────────┘
-```
-
-### 4. Tool-Based Agents
-
-Instead of hardcoding logic, we give the agent **tools**:
-- `search_players`: Semantic search
-- `get_top_defenders`: SQL query for defense stats
-- `get_top_scorers`: SQL query for scoring stats
-
-The agent decides which tools to use based on the question.
+| Concept | Implementation |
+|---------|---------------|
+| **RAG** | Retrieve data from DuckDB + vector search, augment the LLM prompt, generate grounded answers |
+| **Vector Embeddings** | Player summaries encoded via `all-MiniLM-L6-v2` (384-dim) for semantic search |
+| **Dynamic SQL** | LLM writes arbitrary SQL queries against the known schema (SELECT-only, validated) |
+| **Multi-Agent** | Supervisor routes to specialist agents, each with focused tools and prompts |
+| **Parallel Dispatch** | LangGraph `Send` API runs SQL and RAG agents simultaneously |
+| **Feedback Loop** | Synthesizer checks data quality; retries via supervisor if insufficient |
 
 ## Project Structure
 
 ```
 nba-analytics-copilot/
 ├── main.py                    # CLI entry point
-├── pyproject.toml             # Dependencies
-├── README.md
+├── pyproject.toml             # Dependencies (uv)
 ├── data/
-│   └── player_stats_2016.csv  # Source data
+│   └── player_stats_2016.csv  # Source data (2016 NBA season, 487 players)
 ├── db/
-│   └── nba.duckdb             # DuckDB database
+│   └── nba.duckdb             # Embedded database (gitignored, regenerated via --setup)
 └── src/
-    ├── config.py              # Configuration
-    ├── db.py                  # Database connection
-    ├── pipeline/              # ETL pipeline
-    │   ├── ingestion.py       # Load CSV → DuckDB
-    │   ├── features.py        # Compute stats
-    │   ├── summaries.py       # Generate text descriptions
-    │   └── embeddings.py      # Create vector embeddings
+    ├── config.py              # All configuration constants
+    ├── db.py                  # DuckDB connection helper
+    ├── pipeline/              # ETL pipeline (4 stages)
+    │   ├── ingestion.py       # CSV → raw_player_stats table
+    │   ├── features.py        # Aggregated stats → player_season_features table
+    │   ├── summaries.py       # Text descriptions → player_summaries table
+    │   └── embeddings.py      # Vector embeddings → player_embeddings table
     ├── retrieval/
-    │   └── semantic.py        # Semantic search implementation
-    └── agent/
-        ├── tools.py           # Agent tools (search, query)
-        └── nba_agent.py       # Main agent with LLM integration
+    │   └── semantic.py        # SemanticRetriever (cosine similarity search)
+    ├── agent/
+    │   └── tools.py           # Raw tool functions (search_players, execute_sql)
+    └── graph/                 # LangGraph multi-agent system
+        ├── state.py           # NBAState TypedDict (shared state contract)
+        ├── tools.py           # LangChain @tool wrappers with schema docs
+        ├── nodes.py           # Node functions (supervisor, sql_agent, rag_agent, synthesizer)
+        └── builder.py         # StateGraph construction with Send and conditional edges
 ```
 
 ## Usage
 
-### Basic Usage (No LLM)
 ```bash
-python main.py "Who had the best assist-to-turnover ratio?"
-```
+# Ask any question about 2016 NBA stats
+python main.py "Who averaged a double-double?"
+python main.py "Which players had more than 2 blocks per game?"
+python main.py "Who were the most efficient scorers?"
 
-### With Ollama (Local LLM)
-```bash
-# Install Ollama: https://ollama.ai
-ollama pull llama3.2
+# See the multi-agent trace
+python main.py -v "Tell me about the top playmakers"
 
-python main.py --backend ollama "Who was the most efficient scorer?"
-```
-
-### Verbose Mode
-```bash
-python main.py -v "Who were the best playmakers?"
+# Use a different Ollama model
+python main.py --model llama3.3 "Best defenders?"
 ```
 
 ## Data Pipeline
@@ -144,35 +111,32 @@ python main.py -v "Who were the best playmakers?"
 The ETL pipeline transforms raw CSV data into a queryable knowledge base:
 
 ```
-CSV Data → DuckDB Tables → Text Summaries → Vector Embeddings
-           (structured)    (for humans)     (for semantic search)
+CSV (27 columns, 487 players)
+    ↓ ingestion.py
+DuckDB: raw_player_stats
+    ↓ features.py
+DuckDB: player_season_features (PPG, RPG, APG, TS%, stocks, etc.)
+    ↓ summaries.py
+DuckDB: player_summaries (human-readable text per player)
+    ↓ embeddings.py
+DuckDB: player_embeddings (384-dim vectors for semantic search)
 ```
 
-Run it with:
-```bash
-python main.py --setup
-```
-
-## Limitations & Future Improvements
-
-**Current limitations:**
-- Only 2016 NBA season data
-- Limited defensive metrics (STL, BLK only - no DRTG, DWS)
-- Simple rule-based tool selection
-
-**Potential improvements:**
-- Add more seasons via `nba_api` package
-- Advanced defensive stats
-- LLM-powered tool selection
-- Conversation memory
-- Player comparison visualizations
+Run with: `python main.py --setup`
 
 ## Tech Stack
 
 | Component | Technology |
 |-----------|------------|
+| Agent Framework | LangGraph (StateGraph, Send, conditional edges) |
+| LLM Integration | langchain-ollama (ChatOllama) |
 | Database | DuckDB (embedded OLAP) |
 | ETL | Polars, Pandas |
 | Embeddings | sentence-transformers (all-MiniLM-L6-v2) |
-| LLM (optional) | Ollama  |
 | CLI | argparse |
+
+## Known Limitations
+
+- **Single season**: Only 2016 NBA data (expandable via ETL pipeline).
+- **Model quality**: llama3.2 (3B) sometimes generates incorrect SQL (wrong quoting, bad column names). Larger models (llama3.3 70B) perform significantly better.
+- **Defensive metrics**: Limited to STL + BLK — no DRTG, DWS, or advanced defensive stats.

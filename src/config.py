@@ -5,3 +5,13 @@ MIN_GAMES = 50
 HIGH_USAGE_THRESHOLD = 25.0
 
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+
+# LLM Configuration
+DEFAULT_OLLAMA_MODEL = "llama3.2"
+OLLAMA_BASE_URL = "http://localhost:11434"
+
+# Graph Configuration
+MAX_ITERATIONS = 5
+
+# RAG Configuration
+SIMILARITY_THRESHOLD = 0.15

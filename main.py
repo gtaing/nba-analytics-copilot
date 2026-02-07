@@ -4,10 +4,9 @@ NBA Analytics Copilot - CLI Entry Point
 
 Usage:
     python main.py "Who was the best defender in 2016?"
-    python main.py --setup                    # Run ETL pipeline
-    python main.py --backend ollama "..."     # Use Ollama LLM
-    python main.py --backend huggingface "..."  # Use HuggingFace model
-    python main.py --verbose "..."            # Show debug info
+    python main.py --setup                      # Run ETL pipeline
+    python main.py --model llama3.2 "..."       # Specify Ollama model
+    python main.py -v "Compare LeBron and Curry" # Show agent trace
 """
 
 import argparse
@@ -19,7 +18,8 @@ from src.pipeline import (
     generate_player_summaries,
     build_embeddings,
 )
-from src.agent import NBAAgent
+from src.graph import build_graph
+from src.config import MAX_ITERATIONS
 
 
 def run_pipeline():
@@ -41,9 +41,9 @@ def main():
         epilog="""
 Examples:
   python main.py "Who were the best defenders in 2016?"
-  python main.py "Which players had the highest assist-to-turnover ratio?"
+  python main.py "Which players averaged more than 2 blocks per game?"
   python main.py --setup  # First time setup
-  python main.py --backend ollama "Who was the most efficient scorer?"
+  python main.py -v "Compare LeBron and Curry"
         """,
     )
 
@@ -60,28 +60,15 @@ Examples:
     )
 
     parser.add_argument(
-        "--backend",
-        choices=["ollama", "huggingface", "none"],
-        default="none",
-        help="LLM backend to use (default: none - shows raw data)",
-    )
-
-    parser.add_argument(
         "--model",
         type=str,
-        help="Specific model name (e.g., 'llama3.2' for Ollama)",
+        help="Ollama model name (default: llama3.2)",
     )
 
     parser.add_argument(
         "--verbose", "-v",
         action="store_true",
-        help="Show verbose output including tool selection",
-    )
-
-    parser.add_argument(
-        "--show-context",
-        action="store_true",
-        help="Show the raw context used to generate the answer",
+        help="Show the multi-agent trace (routing, tool results, iterations)",
     )
 
     args = parser.parse_args()
@@ -98,23 +85,35 @@ Examples:
         print("\nError: Please provide a question or use --setup")
         sys.exit(1)
 
-    # Initialize agent
-    agent = NBAAgent(llm_backend=args.backend, model_name=args.model)
+    # Build and invoke the multi-agent graph
+    graph = build_graph(model_name=args.model)
+    result = graph.invoke(
+        {"messages": [("user", args.question)]},
+        config={"recursion_limit": MAX_ITERATIONS * 10},
+    )
 
-    # Ask the question
-    if args.show_context:
-        answer, context = agent.ask_with_context(args.question)
-        print("\n" + "=" * 60)
-        print("ANSWER")
-        print("=" * 60)
-        print(answer)
-        print("\n" + "=" * 60)
-        print("CONTEXT USED")
-        print("=" * 60)
-        print(context)
-    else:
-        answer = agent.ask(args.question, verbose=args.verbose)
-        print("\n" + answer)
+    # Verbose: show the multi-agent trace
+    if args.verbose:
+        route = result.get("route", "?")
+        iteration = result.get("iteration", 1)
+        sql = result.get("sql_result", "")
+        rag = result.get("rag_result", "")
+
+        print(f"\n{'='*60}")
+        print("AGENT TRACE")
+        print(f"{'='*60}")
+        print(f"Route: {route} | Iterations: {iteration}")
+
+        if sql:
+            preview = sql[:300] + "..." if len(sql) > 300 else sql
+            print(f"\n[SQL Agent]\n{preview}")
+        if rag:
+            preview = rag[:300] + "..." if len(rag) > 300 else rag
+            print(f"\n[RAG Agent]\n{preview}")
+        print(f"{'='*60}\n")
+
+    answer = result["messages"][-1].content
+    print("\n" + answer)
 
 
 if __name__ == "__main__":

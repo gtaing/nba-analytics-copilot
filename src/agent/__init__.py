@@ -1,5 +1,5 @@
-"""NBA Analytics Agent with tool-based architecture."""
+"""NBA Analytics Agent tools.
 
-from src.agent.nba_agent import NBAAgent
-
-__all__ = ["NBAAgent"]
+The original tool functions live here and are wrapped by src/graph/tools.py
+with LangChain @tool decorators for use in the LangGraph agent.
+"""

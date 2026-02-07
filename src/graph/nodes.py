@@ -105,13 +105,32 @@ Columns:
   true_shooting_pct   DOUBLE   — true shooting percentage (0-1)
   ast_to_tov_ratio    DOUBLE   — assist-to-turnover ratio
   stocks_per_game     DOUBLE   — steals + blocks combined (defensive stat)
+  three_pt_pct        DOUBLE   — three-point shooting percentage (0-1 scale, low precision)
+  three_pt_made_per_game   DOUBLE — three-pointers made per game (best metric for 3P shooters)
+  three_pt_attempted_per_game DOUBLE — three-point attempts per game
+  fg_pct              DOUBLE   — field goal percentage (0-1)
+  ft_pct              DOUBLE   — free throw percentage (0-1)
 
 Tips:
 - Use stocks_per_game to rank defenders (steals + blocks).
+- Rank 3P shooters by three_pt_made_per_game (NOT three_pt_pct — pct has low precision, many players tied at 0.4).
 - Filter games_played >= 50 for meaningful per-game averages.
 - Use single quotes for strings: WHERE player_name = 'LeBron James'
 - Always SELECT the relevant stat columns alongside player_name so the data is useful.
 - For "best" or "top" questions, use ORDER BY ... DESC LIMIT 10.
+
+Examples:
+Q: "best defenders"
+SELECT player_name, stl_per_game, blk_per_game, stocks_per_game FROM player_season_features WHERE games_played >= 50 ORDER BY stocks_per_game DESC LIMIT 10
+
+Q: "top scorers"
+SELECT player_name, pts_per_game FROM player_season_features WHERE games_played >= 50 ORDER BY pts_per_game DESC LIMIT 10
+
+Q: "best 3-point shooters"
+SELECT player_name, three_pt_made_per_game, three_pt_attempted_per_game, three_pt_pct FROM player_season_features WHERE games_played >= 50 AND three_pt_attempted_per_game >= 3 ORDER BY three_pt_made_per_game DESC LIMIT 10
+
+Q: "compare LeBron and Curry"
+SELECT player_name, pts_per_game, reb_per_game, ast_per_game, stl_per_game, blk_per_game FROM player_season_features WHERE player_name IN ('LeBron James', 'Stephen Curry')
 
 If a query errors, read the error and try a corrected query."""
 

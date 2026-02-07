@@ -25,7 +25,16 @@ python main.py -v "Who were the best playmakers?"
 python main.py --model llama3.3 "Who scored the most?"
 ```
 
-There is no test suite configured.
+## Testing
+
+```bash
+# Unit tests (no Ollama required — 36 tests covering SQL validation, routing, formatting)
+python -m pytest tests/ -v
+
+# Evaluation against live LLM (requires Ollama running)
+python eval.py
+python eval.py --model llama3.3
+```
 
 ## Architecture
 
@@ -35,14 +44,14 @@ The project has three layers:
 
 Transforms `data/player_stats_2016.csv` into DuckDB tables:
 - `ingestion.py`: CSV → `raw_player_stats` table (Polars for loading)
-- `features.py`: Aggregated stats → `player_season_features` table (PPG, RPG, APG, TS%, stocks)
-- `summaries.py`: Text descriptions → `player_summaries` table
+- `features.py`: Aggregated stats → `player_season_features` table (PPG, RPG, APG, TS%, stocks, 3P stats, FG%, FT%)
+- `summaries.py`: Text descriptions with qualitative labels (e.g. "elite defender", "rim protector") → `player_summaries` table
 - `embeddings.py`: `all-MiniLM-L6-v2` (384-dim) → `player_embeddings` table
 
 ### 2. Tool Layer (`src/agent/tools.py` + `src/retrieval/semantic.py`)
 
 Two raw tool functions:
-- `search_players(query, top_k)`: Semantic vector search with retry/rephrase on low similarity scores (threshold in config).
+- `search_players(query, top_k)`: Hybrid retrieval — keyword-based stat lookup from DB for ranking queries (e.g. "best defenders" → ORDER BY stocks_per_game), with semantic vector search as fallback. Retry/rephrase on low similarity scores.
 - `execute_sql(sql_query)`: Validated SQL execution — SELECT-only, forbidden keyword scan, auto LIMIT 50.
 
 LangChain `@tool` wrappers in `src/graph/tools.py` expose these to the LLM with full schema documentation in docstrings.
@@ -69,7 +78,7 @@ All constants live in `src/config.py`:
 - `DB_PATH = "db/nba.duckdb"` — DuckDB database location
 - `RAW_DATA_PATH = "data/player_stats_2016.csv"` — source CSV
 - `EMBEDDING_MODEL = "all-MiniLM-L6-v2"` — sentence-transformers model
-- `DEFAULT_OLLAMA_MODEL = "llama3.2"` — default LLM
+- `DEFAULT_OLLAMA_MODEL = "qwen2.5:7b"` — default LLM
 - `OLLAMA_BASE_URL = "http://localhost:11434"` — Ollama endpoint
 - `MAX_ITERATIONS = 5` — feedback loop safety cap
 - `SIMILARITY_THRESHOLD = 0.15` — RAG retry trigger threshold

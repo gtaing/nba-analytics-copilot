@@ -51,19 +51,15 @@ def query_db(sql_query: str) -> str:
         true_shooting_pct   DOUBLE    — true shooting % (0-1 scale)
         ast_to_tov_ratio    DOUBLE    — assist-to-turnover ratio
         stocks_per_game     DOUBLE    — steals + blocks per game
-
-    Table: raw_player_stats (487 rows — original per-game averages)
-        firstName, lastName VARCHAR
-        GP, MIN, PTS, AST, BLK, STL            DOUBLE
-        FGA, FGM, "FG%", "3PA", "3PM", "3P%"   DOUBLE
-        FTA, FTM, "FT%"                         DOUBLE
-        DREB, OREB, REB, PF, TO, "+/-", ts      DOUBLE
+        three_pt_pct        DOUBLE    — three-point shooting percentage (0-1)
+        three_pt_made_per_game   DOUBLE — three-pointers made per game
+        three_pt_attempted_per_game DOUBLE — three-point attempts per game
+        fg_pct              DOUBLE    — field goal percentage (0-1)
+        ft_pct              DOUBLE    — free throw percentage (0-1)
 
     Tips:
-    - Use player_season_features for most queries (cleaner columns).
-    - Use raw_player_stats when you need shooting splits or plus/minus.
-    - IMPORTANT: use single quotes for string values: WHERE player_name = 'LeBron James'
-    - Double quotes are only for column names with special characters: "FG%", "3P%", "+/-".
+    - Use player_season_features for all queries (clean column names, no quoting needed).
+    - Use single quotes for string values: WHERE player_name = 'LeBron James'
     - Filter with games_played >= 50 for meaningful per-game averages.
     - Results are capped at 50 rows.
 

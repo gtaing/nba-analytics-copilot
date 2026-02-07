@@ -18,7 +18,12 @@ def build_player_season_features():
             AVG(BLK) AS blk_per_game,
             AVG(ts) AS true_shooting_pct,
             AVG(AST) / NULLIF(AVG("TO"), 0) AS ast_to_tov_ratio,
-            AVG(STL) + AVG(BLK) AS stocks_per_game
+            AVG(STL) + AVG(BLK) AS stocks_per_game,
+            AVG("3P%") AS three_pt_pct,
+            AVG("3PM") AS three_pt_made_per_game,
+            AVG("3PA") AS three_pt_attempted_per_game,
+            AVG("FG%") AS fg_pct,
+            AVG("FT%") AS ft_pct
         FROM raw_player_stats
         GROUP BY player_name, games_played
     """)

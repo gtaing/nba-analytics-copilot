@@ -7,7 +7,7 @@ HIGH_USAGE_THRESHOLD = 25.0
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 
 # LLM Configuration
-DEFAULT_OLLAMA_MODEL = "llama3.2"
+DEFAULT_OLLAMA_MODEL = "qwen2.5:7b"
 OLLAMA_BASE_URL = "http://localhost:11434"
 
 # Graph Configuration

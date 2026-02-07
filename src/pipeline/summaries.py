@@ -22,10 +22,36 @@ def generate_player_summaries():
         FROM player_season_features
     """).fetchall()
 
+    def _build_labels(pts, reb, ast, stl, blk, ts, stocks):
+        """Assign qualitative labels based on stat thresholds."""
+        labels = []
+        if pts >= 20:
+            labels.append("elite scorer")
+        if reb >= 10:
+            labels.append("dominant rebounder")
+        if ast >= 7:
+            labels.append("elite playmaker")
+        if stocks >= 2.5:
+            labels.append("elite defender")
+        if blk >= 1.5:
+            labels.append("rim protector")
+        if stl >= 1.5:
+            labels.append("ball hawk")
+        if ts >= 0.60:
+            labels.append("efficient shooter")
+        return labels
+
     def make_summary(r):
         name, gp, pts, reb, ast, stl, blk, ts, ast_tov, stocks = r
+
+        labels = _build_labels(pts, reb, ast, stl, blk, ts, stocks)
+        label_line = ""
+        if labels:
+            label_line = f" He is known as an {', '.join(labels)}."
+
         return (
-            f"{name} played {gp} games in the 2016 season. "
+            f"{name} played {gp} games in the 2016 season."
+            f"{label_line} "
             f"He averaged {pts:.1f} points, {reb:.1f} rebounds, and {ast:.1f} assists per game. "
             f"His true shooting percentage was {ts*100:.1f}%. "
             f"Defensively, he averaged {stl:.1f} steals and {blk:.1f} blocks per game "

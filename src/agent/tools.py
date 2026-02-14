@@ -53,18 +53,18 @@ def _format_results(results: list[dict]) -> str:
 # Order matters: first match wins.
 
 STAT_KEYWORDS: list[tuple[str, str]] = [
-    ("defend",   "stocks_per_game"),
-    ("block",    "blk_per_game"),
-    ("steal",    "stl_per_game"),
-    ("rebound",  "reb_per_game"),
-    ("assist",   "ast_per_game"),
-    ("playmak",  "ast_per_game"),
-    ("3p",       "three_pt_made_per_game"),
-    ("three p",  "three_pt_made_per_game"),
-    ("three-p",  "three_pt_made_per_game"),
-    ("scor",     "pts_per_game"),
-    ("point",    "pts_per_game"),
-    ("shoot",    "true_shooting_pct"),
+    ("defend", "stocks_per_game"),
+    ("block", "blk_per_game"),
+    ("steal", "stl_per_game"),
+    ("rebound", "reb_per_game"),
+    ("assist", "ast_per_game"),
+    ("playmak", "ast_per_game"),
+    ("3p", "three_pt_made_per_game"),
+    ("three p", "three_pt_made_per_game"),
+    ("three-p", "three_pt_made_per_game"),
+    ("scor", "pts_per_game"),
+    ("point", "pts_per_game"),
+    ("shoot", "true_shooting_pct"),
     ("efficien", "true_shooting_pct"),
 ]
 

@@ -55,7 +55,7 @@ def run_eval(model_name: str | None = None):
     results = []
 
     for question, expected_names in EVAL_CASES:
-        print(f"\n{'─'*60}")
+        print(f"\n{'─' * 60}")
         print(f"Q: {question}")
         print(f"   Expected: {expected_names}")
 
@@ -73,7 +73,9 @@ def run_eval(model_name: str | None = None):
 
         # Check: how many expected names appear in the answer?
         found = [name for name in expected_names if name.lower() in answer.lower()]
-        missing = [name for name in expected_names if name.lower() not in answer.lower()]
+        missing = [
+            name for name in expected_names if name.lower() not in answer.lower()
+        ]
         hit_rate = len(found) / len(expected_names)
 
         # Pass if at least half the expected names appear
@@ -85,13 +87,15 @@ def run_eval(model_name: str | None = None):
         else:
             failed += 1
 
-        results.append({
-            "question": question,
-            "status": status,
-            "hit_rate": hit_rate,
-            "found": found,
-            "missing": missing,
-        })
+        results.append(
+            {
+                "question": question,
+                "status": status,
+                "hit_rate": hit_rate,
+                "found": found,
+                "missing": missing,
+            }
+        )
 
         print(f"   Answer: {answer[:200]}...")
         print(f"   Found: {found}")
@@ -100,9 +104,9 @@ def run_eval(model_name: str | None = None):
 
     # ── Summary ─────────────────────────────────────────────────
     total = passed + failed
-    print(f"\n{'='*60}")
-    print(f"EVALUATION SUMMARY: {passed}/{total} passed ({passed/total:.0%})")
-    print(f"{'='*60}")
+    print(f"\n{'=' * 60}")
+    print(f"EVALUATION SUMMARY: {passed}/{total} passed ({passed / total:.0%})")
+    print(f"{'=' * 60}")
     for r in results:
         print(f"  [{r['status']}] {r['question']}")
         if r["missing"]:

@@ -7,12 +7,10 @@ Strategy:
   controlled responses and verify the parsing produces the correct route.
 """
 
-import pytest
 from unittest.mock import patch, MagicMock
 
 from langchain_core.messages import HumanMessage, AIMessage
 from langgraph.graph import END
-from langgraph.types import Send
 
 from src.graph.builder import route_question, check_confidence
 from src.graph.nodes import create_supervisor
@@ -20,6 +18,7 @@ from src.config import MAX_ITERATIONS
 
 
 # ── Helpers ─────────────────────────────────────────────────────
+
 
 def _make_state(**overrides) -> dict:
     """Build a minimal NBAState dict for testing."""
@@ -39,7 +38,6 @@ def _make_state(**overrides) -> dict:
 
 
 class TestRouteQuestion:
-
     def test_sql_dispatches_sql_agent_only(self):
         sends = route_question(_make_state(route="sql"))
         assert len(sends) == 1
@@ -68,7 +66,6 @@ class TestRouteQuestion:
 
 
 class TestCheckConfidence:
-
     def test_ends_when_sql_has_data(self):
         state = _make_state(sql_result="player_name\nLeBron James")
         assert check_confidence(state) == END

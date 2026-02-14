@@ -16,9 +16,7 @@ def build_embeddings():
     """).fetchall()
 
     print(f"  Encoding {len(rows)} summaries...")
-    embeddings = [
-        (name, model.encode(summary).tolist()) for name, summary in rows
-    ]
+    embeddings = [(name, model.encode(summary).tolist()) for name, summary in rows]
 
     con.execute("""
         CREATE OR REPLACE TABLE player_embeddings (

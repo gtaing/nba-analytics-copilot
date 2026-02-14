@@ -39,11 +39,11 @@ def main():
         description="NBA Analytics Copilot - Ask questions about NBA statistics",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Examples:
-  python main.py "Who were the best defenders in 2016?"
-  python main.py "Which players averaged more than 2 blocks per game?"
-  python main.py --setup  # First time setup
-  python main.py -v "Compare LeBron and Curry"
+            Examples:
+            python main.py "Who were the best defenders in 2016?"
+            python main.py "Which players averaged more than 2 blocks per game?"
+            python main.py --setup  # First time setup
+            python main.py -v "Compare LeBron and Curry"
         """,
     )
 
@@ -66,7 +66,8 @@ Examples:
     )
 
     parser.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Show the multi-agent trace (routing, tool results, iterations)",
     )
@@ -99,9 +100,9 @@ Examples:
         sql = result.get("sql_result", "")
         rag = result.get("rag_result", "")
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("AGENT TRACE")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"Route: {route} | Iterations: {iteration}")
 
         if sql:
@@ -110,7 +111,7 @@ Examples:
         if rag:
             preview = rag[:300] + "..." if len(rag) > 300 else rag
             print(f"\n[RAG Agent]\n{preview}")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
     answer = result["messages"][-1].content
     print("\n" + answer)

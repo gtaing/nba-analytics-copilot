@@ -70,11 +70,13 @@ class SemanticRetriever:
         results = []
         for player in all_players:
             similarity = cosine_similarity(question_embedding, player["embedding"])
-            results.append({
-                "player_name": player["player_name"],
-                "summary": player["summary"],
-                "similarity": similarity,
-            })
+            results.append(
+                {
+                    "player_name": player["player_name"],
+                    "summary": player["summary"],
+                    "similarity": similarity,
+                }
+            )
 
         # Sort by similarity (highest first) and return top_k
         results.sort(key=lambda x: x["similarity"], reverse=True)

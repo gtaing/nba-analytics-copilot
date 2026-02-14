@@ -96,6 +96,8 @@ def build_graph(model_name: str | None = None):
     graph.add_conditional_edges("supervisor", route_question)
     graph.add_edge("sql_agent", "synthesizer")
     graph.add_edge("rag_agent", "synthesizer")
-    graph.add_conditional_edges("synthesizer", check_confidence, {END: END, "supervisor": "supervisor"})
+    graph.add_conditional_edges(
+        "synthesizer", check_confidence, {END: END, "supervisor": "supervisor"}
+    )
 
     return graph.compile()

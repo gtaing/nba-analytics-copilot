@@ -1,1 +1,1 @@
-from db import DB_DIR
+from db import DB_DIR as DB_DIR

@@ -25,3 +25,8 @@ huggingface = [
 
 [project.scripts]
 nba-copilot = "main:main"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.1",
+]

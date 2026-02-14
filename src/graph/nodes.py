@@ -20,6 +20,7 @@ from src.agent.tools import search_players as raw_search_players
 
 # ── Helpers ─────────────────────────────────────────────────────
 
+
 def _get_question(state: NBAState) -> str:
     """Extract the original user question (always the first message)."""
     return state["messages"][0].content
@@ -68,10 +69,12 @@ def create_supervisor(model_name: str | None = None):
             return {"route": "both"}
 
         question = _get_question(state)
-        response = llm.invoke([
-            SystemMessage(content=SUPERVISOR_PROMPT),
-            HumanMessage(content=question),
-        ])
+        response = llm.invoke(
+            [
+                SystemMessage(content=SUPERVISOR_PROMPT),
+                HumanMessage(content=question),
+            ]
+        )
 
         # Parse the classification loosely — default to "both" on ambiguity
         text = response.content.strip().lower()
@@ -167,9 +170,7 @@ def create_sql_agent(model_name: str | None = None):
             for tc in response.tool_calls:
                 result = query_db.invoke(tc["args"])
                 last_result = result
-                internal_msgs.append(
-                    ToolMessage(content=result, tool_call_id=tc["id"])
-                )
+                internal_msgs.append(ToolMessage(content=result, tool_call_id=tc["id"]))
 
                 # Stop retrying on success
                 if not result.startswith(ERROR_PREFIXES):
@@ -181,6 +182,7 @@ def create_sql_agent(model_name: str | None = None):
 
 
 # ── RAG Agent ───────────────────────────────────────────────────
+
 
 def create_rag_agent():
     """Create the RAG (semantic search) specialist agent.
@@ -236,21 +238,26 @@ def create_synthesizer(model_name: str | None = None):
 
         if not context_parts:
             from langchain_core.messages import AIMessage
+
             return {
-                "messages": [AIMessage(
-                    content="I could not retrieve relevant data for this question."
-                )],
+                "messages": [
+                    AIMessage(
+                        content="I could not retrieve relevant data for this question."
+                    )
+                ],
                 "iteration": iteration + 1,
             }
 
         context = "\n\n".join(context_parts)
 
-        response = llm.invoke([
-            SystemMessage(content=SYNTHESIZER_PROMPT),
-            HumanMessage(
-                content=f"Question: {question}\n\nAvailable Data:\n{context}"
-            ),
-        ])
+        response = llm.invoke(
+            [
+                SystemMessage(content=SYNTHESIZER_PROMPT),
+                HumanMessage(
+                    content=f"Question: {question}\n\nAvailable Data:\n{context}"
+                ),
+            ]
+        )
 
         return {
             "messages": [response],

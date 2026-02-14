@@ -99,7 +99,9 @@ class TestSQLLimitEnforcement:
         mock_conn.execute.return_value.fetchdf.return_value = pd.DataFrame()
         mock_get_conn.return_value = mock_conn
 
-        result = execute_sql("SELECT * FROM player_season_features WHERE player_name = 'Nobody'")
+        result = execute_sql(
+            "SELECT * FROM player_season_features WHERE player_name = 'Nobody'"
+        )
         assert result == "Query returned no results."
 
     @patch("src.agent.tools.get_connection")
@@ -119,7 +121,6 @@ class TestSQLLimitEnforcement:
 
 
 class TestAvgSimilarity:
-
     def test_empty_list(self):
         assert _avg_similarity([]) == 0.0
 
@@ -136,15 +137,21 @@ class TestAvgSimilarity:
 
 
 class TestFormatResults:
-
     def test_includes_player_name(self):
-        results = [{
-            "player_name": "LeBron James",
-            "similarity": 0.95,
-            "summary": "Great player",
-            "stats": {"pts_per_game": 25.3, "reb_per_game": 7.4,
-                      "ast_per_game": 8.7, "stl_per_game": 1.2, "blk_per_game": 0.6},
-        }]
+        results = [
+            {
+                "player_name": "LeBron James",
+                "similarity": 0.95,
+                "summary": "Great player",
+                "stats": {
+                    "pts_per_game": 25.3,
+                    "reb_per_game": 7.4,
+                    "ast_per_game": 8.7,
+                    "stl_per_game": 1.2,
+                    "blk_per_game": 0.6,
+                },
+            }
+        ]
         formatted = _format_results(results)
         assert "LeBron James" in formatted
         assert "25.3 PPG" in formatted
@@ -152,11 +159,13 @@ class TestFormatResults:
 
     def test_missing_stats_default_to_zero(self):
         """Results without a stats dict should show 0.0 for all stats."""
-        results = [{
-            "player_name": "Bench Player",
-            "similarity": 0.10,
-            "summary": "Rarely plays",
-        }]
+        results = [
+            {
+                "player_name": "Bench Player",
+                "similarity": 0.10,
+                "summary": "Rarely plays",
+            }
+        ]
         formatted = _format_results(results)
         assert "0.0 PPG" in formatted
 
